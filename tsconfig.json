@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "sourceMap": true,
+    "target": "ESNext",
+    "module": "ESNext",
+    "esModuleInterop": true,
+    "moduleResolution": "node",
+    "strict": true,
+    "jsx": "react-jsx"
+  },
+  "include": ["src/**/*"],
+  "ts-node": {
+    "compilerOptions": {
+      // webpack.config.tsなどtypescriptで記述された設定ファイルを評価するため
+      "module": "CommonJS"
+    }
+  }
+}
