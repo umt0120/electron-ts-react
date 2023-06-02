@@ -1,10 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 
 interface Rectangle {
-  startX: number;
-  startY: number;
+  id: string;
+  x: number;
+  y: number;
   width: number;
   height: number;
+  color: string;
+}
+
+interface DragData {
+  id: string;
+  isResizing: boolean;
+  offsetX: number;
+  offsetY: number;
+  initWidth: number;
+  initHeight: number;
 }
 
 export const Video = () => {
@@ -13,8 +24,11 @@ export const Video = () => {
   let videoTrack: MediaStreamTrack | null = null;
   let animationFrameId: number | null = null;
   const [isCapturing, setIsCapturing] = useState(false);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [rectangle, setRectangle] = useState<Rectangle | null>(null);
+  const [rectangles, setRectangles] = useState<Rectangle[]>([
+    { id: '1', x: 10, y: 10, width: 100, height: 100, color: 'red' },
+    { id: '2', x: 120, y: 120, width: 100, height: 100, color: 'blue' },
+  ]);
+  const [dragData, setDragData] = useState<DragData | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -36,15 +50,15 @@ export const Video = () => {
               canvas.width = imageBitmap.width;
               canvas.height = imageBitmap.height;
               ctx.drawImage(imageBitmap, 0, 0);
-              if (rectangle) {
-                ctx.strokeStyle = 'red';
+              rectangles.forEach((rectangle) => {
+                ctx.strokeStyle = rectangle.color;
                 ctx.strokeRect(
-                  rectangle.startX,
-                  rectangle.startY,
+                  rectangle.x,
+                  rectangle.y,
                   rectangle.width,
                   rectangle.height
                 );
-              }
+              });
             })
             .catch((err) => {
               console.log('Something went wrong!', err);
@@ -61,7 +75,7 @@ export const Video = () => {
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [isCapturing, rectangle]);
+  }, [isCapturing, rectangles]);
 
   const handleStart = () => {
     setIsCapturing(true);
@@ -71,28 +85,62 @@ export const Video = () => {
     setIsCapturing(false);
   };
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    setIsDrawing(true);
     const rect = e.currentTarget.getBoundingClientRect();
-    setRectangle({
-      startX: e.clientX - rect.left,
-      startY: e.clientY - rect.top,
-      width: 0,
-      height: 0,
-    });
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    for (let i = rectangles.length - 1; i >= 0; i--) {
+      const rectangle = rectangles[i];
+      if (
+        x >= rectangle.x &&
+        x <= rectangle.x + rectangle.width &&
+        y >= rectangle.y &&
+        y <= rectangle.y + rectangle.height
+      ) {
+        // clicked inside rectangle
+        const isResizing =
+          x >= rectangle.x + rectangle.width - 10 &&
+          y >= rectangle.y + rectangle.height - 10;
+        setDragData({
+          id: rectangle.id,
+          isResizing,
+          offsetX: x - rectangle.x,
+          offsetY: y - rectangle.y,
+          initWidth: rectangle.width,
+          initHeight: rectangle.height,
+        });
+        break;
+      }
+    }
   };
 
   const handleMouseUp = () => {
-    setIsDrawing(false);
+    setDragData(null);
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !rectangle) return;
+    if (!dragData) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    setRectangle({
-      ...rectangle,
-      width: e.clientX - rect.left - rectangle.startX,
-      height: e.clientY - rect.top - rectangle.startY,
-    });
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    setRectangles((rectangles) =>
+      rectangles.map((rectangle) => {
+        if (rectangle.id !== dragData.id) return rectangle;
+        if (dragData.isResizing) {
+          return {
+            ...rectangle,
+            width: dragData.initWidth + x - rectangle.x - dragData.offsetX,
+            height: dragData.initHeight + y - rectangle.y - dragData.offsetY,
+          };
+        } else {
+          return {
+            ...rectangle,
+            x: x - dragData.offsetX,
+            y: y - dragData.offsetY,
+          };
+        }
+      })
+    );
   };
 
   return (
