@@ -1,9 +1,6 @@
 import './App.css';
+import { Video } from './components/Video';
 
 export const App = () => {
-  return (
-    <div className="container">
-      <h1>Hello.</h1>
-    </div>
-  );
+  return <Video />;
 };
